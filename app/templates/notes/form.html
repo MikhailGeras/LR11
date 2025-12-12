@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ "Редактирование" if note else "Создание" }} — Notes{% endblock %}
+
+{% block content %}
+<h1>{{ "Редактирование заметки" if note else "Новая заметка" }}</h1>
+
+<div class="card">
+  <form method="post" action="{{ action }}">
+    <label>Заголовок</label>
+    <input class="input" name="title" required value="{{ note.title if note else '' }}">
+
+    <label>Текст</label>
+    <textarea class="input" name="content" rows="10" required>{{ note.content if note else '' }}</textarea>
+
+    <label>Теги</label>
+    <input class="input" name="tags" placeholder="uni, urgent" value="{{ note.tags if note else '' }}">
+    <div class="small">Если храните теги строкой — через запятую.</div>
+
+    <div class="actions" style="margin-top: 12px;">
+      <button class="btn primary" type="submit">Сохранить</button>
+      <a class="btn" href="/notes">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

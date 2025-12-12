@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Главная — Notes{% endblock %}
+
+{% block content %}
+<h1>Пользователи</h1>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Имя</th>
+      <th>Email</th>
+      <th>Заметок</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.name }}</td>
+        <td class="muted">{{ u.email }}</td>
+        <td>{{ u.notes_count }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if not users %}
+  <p class="small">Пользователей пока нет.</p>
+{% endif %}
+{% endblock %}

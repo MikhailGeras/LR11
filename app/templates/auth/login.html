@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Вход — Notes{% endblock %}
+
+{% block content %}
+<h1>Вход</h1>
+
+<div class="card">
+  <form method="post" action="/auth/login">
+    <label>Email</label>
+    <input class="input" type="email" name="email" required>
+
+    <label>Пароль</label>
+    <input class="input" type="password" name="password" required>
+
+    <div class="actions" style="margin-top: 12px;">
+      <button class="btn primary" type="submit">Войти</button>
+      <a class="btn" href="/auth/register">Регистрация</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
