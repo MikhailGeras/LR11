@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Notes{% endblock %}</title>
+  <link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="container">
+      <a href="/"><strong>Notes</strong></a>
+      <a href="/">Главная</a>
+      <a href="/notes">Мои заметки</a>
+      <a href="/notes/new">Создать</a>
+
+      <div class="spacer"></div>
+
+      {% if user %}
+        <span class="muted">{{ user.name }}</span>
+        <a href="/auth/logout">Выйти</a>
+      {% else %}
+        <a href="/auth/login">Войти</a>
+        <a href="/auth/register">Регистрация</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <main class="container">
+    {% if message %}
+      <div class="alert">{{ message }}</div>
+    {% endif %}
+
+    {% if errors %}
+      <div class="alert error">
+        <ul style="margin: 0; padding-left: 18px;">
+          {% for e in errors %}
+            <li>{{ e }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

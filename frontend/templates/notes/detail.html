@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ note.title }} — Notes{% endblock %}
+
+{% block content %}
+<div class="actions" style="justify-content: space-between;">
+  <div>
+    <h1 style="margin-bottom: 6px;">{{ note.title }}</h1>
+    <div class="small">
+      Создано: {{ note.created_at }} · Обновлено: {{ note.updated_at }}<br>
+      Теги: {{ note.tags or "—" }}
+    </div>
+  </div>
+
+  <div class="actions">
+    <a class="btn primary" href="/notes/{{ note.id }}/edit">Редактировать</a>
+
+    <form method="post" action="/notes/{{ note.id }}/delete"
+          onsubmit="return confirm('Удалить заметку?');">
+      <button class="btn danger" type="submit">Удалить</button>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 12px;">
+  <pre style="white-space: pre-wrap; margin: 0; font-family: inherit;">{{ note.content }}</pre>
+</div>
+{% endblock %}

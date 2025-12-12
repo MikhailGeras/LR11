@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Мои заметки — Notes{% endblock %}
+
+{% block content %}
+<div class="actions" style="justify-content: space-between;">
+  <h1 style="margin: 0;">Мои заметки</h1>
+  <a class="btn primary" href="/notes/new">Создать</a>
+</div>
+
+<div class="card" style="margin-top: 12px;">
+  <form method="get" action="/notes">
+    <div style="display: grid; gap: 10px; grid-template-columns: 1fr 220px 120px;">
+      <input class="input" name="query" placeholder="Поиск по заголовку/тексту" value="{{ query or '' }}">
+      <input class="input" name="tag" placeholder="Тег" value="{{ tag or '' }}">
+      <button class="btn" type="submit">Искать</button>
+    </div>
+    <div class="small" style="margin-top: 8px;">
+      Подсказка: теги можно хранить строкой, например: <code>uni, urgent</code>
+    </div>
+  </form>
+</div>
+
+<div class="list" style="margin-top: 12px;">
+  {% for n in notes %}
+    <a class="item" href="/notes/{{ n.id }}">
+      <div class="top">
+        <div><strong>{{ n.title }}</strong></div>
+        <div class="muted">{{ n.updated_at }}</div>
+      </div>
+      <div class="muted">Теги: {{ n.tags or "—" }}</div>
+    </a>
+  {% endfor %}
+</div>
+
+{% if not notes %}
+  <p class="small" style="margin-top: 12px;">Ничего не найдено.</p>
+{% endif %}
+{% endblock %}
