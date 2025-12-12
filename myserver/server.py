@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import uvicorn
+import json
 
 
 app = FastAPI()
@@ -8,7 +9,7 @@ app.mount("static")
 
 @app.get("/register")
 def register_handler():
-    pass
+    
 
 @app.get("/login")
 def login_handler():
