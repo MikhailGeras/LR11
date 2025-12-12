@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 import uvicorn
 import json
+from models import User, Note\
+from controllers.db_controller import DatabaseController
 
 
 app = FastAPI()
@@ -8,7 +10,8 @@ app = FastAPI()
 app.mount("static")
 
 @app.get("/register")
-def register_handler():
+def register_handler(user_data: User):
+    
     
 
 @app.get("/login")
