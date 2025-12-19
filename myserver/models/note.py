@@ -5,7 +5,7 @@ class Note(BaseModel):
     id: int
     title: str
     content: Optional[str] = None
-    owner_id: int
+    user_id: int
     date_created: str
     date_modified: str
     tags: Optional[list[str]] = None
