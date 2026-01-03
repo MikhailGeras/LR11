@@ -7,3 +7,7 @@ class User(BaseModel):
     email: str
     password: str
     is_admin: bool = False
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
