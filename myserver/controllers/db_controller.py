@@ -1,5 +1,5 @@
 import sqlite3
-from ..models.user import *
+from models.user import User
 
 class DatabaseController:
     def __init__(self, db_path="database.db"):
@@ -19,7 +19,7 @@ class DatabaseController:
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         username TEXT NOT NULL,
                         email TEXT NOT NULL UNIQUE,
-                        password TEXT NOT NULL
+                        password TEXT NOT NULL,
                         is_admin BOOLEAN NOT NULL
                     );
                     """)
@@ -31,7 +31,7 @@ class DatabaseController:
                                 content TEXT,
                                 user_id INTEGER NOT NULL,
                                 date_created TEXT DEFAULT CURRENT_TIMESTAMP,
-                                date_modified TEXT DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                date_modified TEXT DEFAULT CURRENT_TIMESTAMP,
                                 tags TEXT                                
                             );
                             """)
@@ -102,11 +102,11 @@ class DatabaseController:
         conn = self.connect()
         cur = conn.cursor()
 
-        cur.execute("SELECT id, title, date_created, date_modified, tags FROM notes WHERE user_id=?",
+        cur.execute("SELECT id, title, content, date_created, date_modified, tags FROM notes WHERE user_id=?",
                     (user_id,))
-        row = cur.fetchone()
+        rows = cur.fetchall()
         conn.close()
-        return row
+        return rows
 
 
     def read_note_by_id(self,id):
@@ -134,7 +134,7 @@ class DatabaseController:
         conn = self.connect()
         cur = conn.cursor()
 
-        cur.execute("UPDATE users SET title=?, content=?, tags=? WHERE id=?",
+        cur.execute("UPDATE notes SET title=?, content=?, tags=? WHERE id=?",
                     (title, new_content, tags, id))
 
         conn.commit()
@@ -150,4 +150,33 @@ class DatabaseController:
         conn.commit()
         conn.close()
         return 1
+
+    def search_notes(self, user_id, query="", tag=""):
+        """
+        Ищет заметки по user_id с фильтрацией по query (в заголовке или содержимом)
+        и по тегу
+        :param user_id: ID пользователя
+        :param query: строка поиска в заголовке или содержимом
+        :param tag: тег для фильтрации
+        :return: список кортежей (id, title, content, date_created, date_modified, tags)
+        """
+        conn = self.connect()
+        cur = conn.cursor()
+        
+        sql = "SELECT id, title, content, date_created, date_modified, tags FROM notes WHERE user_id=?"
+        params = [user_id]
+        
+        if query:
+            sql += " AND (title LIKE ? OR content LIKE ?)"
+            query_param = f"%{query}%"
+            params.extend([query_param, query_param])
+        
+        if tag:
+            sql += " AND tags LIKE ?"
+            params.append(f"%{tag}%")
+        
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        conn.close()
+        return rows
 
