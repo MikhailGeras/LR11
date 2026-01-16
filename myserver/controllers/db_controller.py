@@ -31,7 +31,7 @@ class DatabaseController:
                             content TEXT,
                             user_id INTEGER NOT NULL,
                             date_created TEXT DEFAULT CURRENT_TIMESTAMP,
-                            date_modified TEXT DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                            date_modified TEXT DEFAULT CURRENT_TIMESTAMP,
                             tags TEXT                                
                         );
                         """)
@@ -49,7 +49,7 @@ class DatabaseController:
                         user_id INTEGER NOT NULL,
                         note_id INTEGER NOT NULL,
                         PRIMARY KEY (tag_id, user_id, note_id),
-                        FOREIGN KEY (tag_id) REFERENCES tags(id)
+                        FOREIGN KEY (tag_id) REFERENCES tags(id),
                         FOREIGN KEY (user_id) REFERENCES users(id),
                         FOREIGN KEY (note_id) REFERENCES notes(id)
                     );
@@ -190,7 +190,8 @@ class DatabaseController:
         """ Возвращает 0 если пользователя нет / если есть - row """
         conn = self.connect()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE email=?, password=?", (email,password))
+        sql = "SELECT * FROM users WHERE email=? AND password = ?"
+        cur.execute(sql, (email,password))
         row = cur.fetchone()
         if row is None:
             return 0
