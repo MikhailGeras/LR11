@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin: Notes</h1>
+
+<p><a href="/">На главную</a> | <a href="/admin/users">Все пользователи</a></p>
+
+<table border="1" cellpadding="6">
+  <tr>
+    <th>ID</th><th>Title</th><th>User</th><th>Tags</th><th>Modified</th><th>Actions</th>
+  </tr>
+  {% for n in notes %}
+  <tr>
+    <td>{{ n.id }}</td>
+    <td>{{ n.title }}</td>
+    <td>{{ n.username }} (id={{ n.user_id }})</td>
+    <td>{{ n.tags }}</td>
+    <td>{{ n.date_modified }}</td>
+    <td>
+      <a href="/admin/notes/{{ n.id }}/edit">Edit</a>
+
+      <form method="post" action="/admin/notes/{{ n.id }}/delete" style="display:inline;">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

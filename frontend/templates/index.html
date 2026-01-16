@@ -10,6 +10,9 @@
       <th>Имя</th>
       <th>Email</th>
       <th>Заметок</th>
+      {% if user and user.id %}
+        <th>Действия (админ)</th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
@@ -18,6 +21,28 @@
         <td>{{ u.name }}</td>
         <td class="muted">{{ u.email }}</td>
         <td>{{ u.notes_count }}</td>
+        {% if user and user.id %}
+        <td>
+          {% if user.is_admin %}
+            <a href="/admin/users/{{ u.id }}/notes">Заметки</a> |
+            <a href="/admin/users/{{ u.id }}/edit">Изменить</a> |
+            <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline;" onsubmit="return confirm('Удалить пользователя и все его заметки?');">
+              <button type="submit">Удалить</button>
+            </form>
+
+          {% elif user.id == u.id %}
+            <a href="/notes">Заметки</a> |
+            <a href="/me/edit">Изменить данные</a> |
+            <form method="post" action="/me/delete" style="display:inline;" onsubmit="return confirm('Удалить аккаунт и все заметки?');">
+              <button type="submit">Удалить себя</button>
+            </form>
+          {% else %}
+            <!-- нет действий для чужих пользователей -->
+          {% endif %}
+        </td>
+        {% endif %}
+
+
       </tr>
     {% endfor %}
   </tbody>

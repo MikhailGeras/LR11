@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin: Edit User</h1>
+
+<form method="post" action="{{ action }}">
+  <label>Username</label><br>
+  <input name="username" required value="{{ u.username }}"><br><br>
+
+  <label>Email</label><br>
+  <input name="email" required value="{{ u.email }}"><br><br>
+
+  <label>Password</label><br>
+  <input name="password" required value=""><br><small>Введите новый пароль</small><br><br>
+
+  <label>is_admin</label><br>
+  <select name="is_admin">
+    <option value="0" {% if not u.is_admin %}selected{% endif %}>0</option>
+    <option value="1" {% if u.is_admin %}selected{% endif %}>1</option>
+  </select><br><br>
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin: Edit Note</h1>
+
+<p><a href="/admin/notes">← Назад ко всем заметкам</a></p>
+
+<form method="post" action="{{ action }}">
+  <label>Заголовок</label><br>
+  <input name="title" required value="{{ note.title }}"><br><br>
+
+  <label>Текст</label><br>
+  <textarea name="content" rows="10" required>{{ note.content }}</textarea><br><br>
+
+  <label>Теги</label><br>
+  <input name="tags" value="{{ note.tags }}"><br><br>
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

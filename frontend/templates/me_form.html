@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Профиль</h1>
+
+<form method="post" action="/me/edit">
+  <label>Имя</label><br>
+  <input name="username" required value="{{ me.username }}"><br><br>
+
+  <label>Email</label><br>
+  <input name="email" required value="{{ me.email }}"><br><br>
+
+  <label>Новый пароль</label><br>
+  <input name="password" required value=""><br><small>Введите новый пароль</small><br><br>
+
+  <button type="submit">Сохранить</button>
+</form>
+
+<hr>
+
+<form method="post" action="/me/delete" onsubmit="return confirm('Удалить аккаунт и все заметки?');">
+  <button type="submit">Удалить аккаунт</button>
+</form>
+{% endblock %}

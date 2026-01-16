@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admin: Users</h1>
+
+<p><a href="/">На главную</a> | <a href="/admin/notes">Все заметки</a></p>
+
+<table border="1" cellpadding="6">
+  <tr>
+    <th>ID</th><th>Username</th><th>Email</th><th>is_admin</th><th>Actions</th>
+  </tr>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.id }}</td>
+    <td>{{ u.username }}</td>
+    <td>{{ u.email }}</td>
+    <td>{{ u.is_admin }}</td>
+    <td>
+      <a href="/admin/users/{{u.id}}/notes">Notes</a>
+
+      <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline;">
+        <button type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

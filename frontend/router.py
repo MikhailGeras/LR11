@@ -50,6 +50,7 @@ def application(environ, start_response):
     # === Главная страница ===
     if method == "GET" and path in ("/", "/index"):
         # Получаем заметки пользователей через httpx
+        users = []
         try:
             with httpx.Client() as client:
                 response = client.get(f"{API_URL}/users/summary")
@@ -57,7 +58,7 @@ def application(environ, start_response):
         except Exception:
             users = []
 
-        body = render_template("index.html", title="Главная", users=users)
+        body = render_template("index.html", title="Главная", users=users, user=current_user)
         start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
         return [body]
 
@@ -106,6 +107,7 @@ def application(environ, start_response):
                     current_user["id"] = user_data.get("id")
                     current_user["username"] = user_data.get("username")
                     current_user["email"] = user_data.get("email")
+                    current_user["is_admin"] = bool(user_data.get("is_admin", 0))
                     return redirect(start_response, "/notes")
         except Exception as e:
             pass
@@ -119,6 +121,7 @@ def application(environ, start_response):
         current_user["id"] = None
         current_user["username"] = None
         current_user["email"] = None
+        current_user["is_admin"] = None
         return redirect(start_response, "/")
 
     # === Список заметок ===
@@ -217,7 +220,7 @@ def application(environ, start_response):
         return not_found(start_response)
 
     # === Редактирование заметки ===
-    if method == "GET" and path.endswith("/edit"):
+    if method == "GET" and path.startswith("/notes/") and path.endswith("/edit") and path.count("/") == 3:
         if not current_user["id"]:
             return redirect(start_response, "/auth/login")
         
@@ -241,7 +244,7 @@ def application(environ, start_response):
         
         return not_found(start_response)
     
-    if method == "POST" and path.endswith("/edit"):
+    if method == "POST" and path.startswith("/notes/") and path.endswith("/edit") and path.count("/") == 3:
         if not current_user["id"]:
             return redirect(start_response, "/auth/login")
         
@@ -264,7 +267,7 @@ def application(environ, start_response):
         return redirect(start_response, "/notes")
 
     # === Удаление заметки ===
-    if method == "POST" and path.endswith("/delete"):
+    if method == "POST" and path.startswith("/notes/") and path.endswith("/delete") and path.count("/") == 3:
         if not current_user["id"]:
             return redirect(start_response, "/auth/login")
         
@@ -278,8 +281,226 @@ def application(environ, start_response):
             pass
         
         return redirect(start_response, "/notes")
+    # ===Админ===
+    if method == "GET" and path == "/admin/users":
+        if not current_user["id"] or not current_user.get("is_admin"):
+            start_response("302 Found", [("Location", "/auth/login")])
+            return [b""]
 
+        with httpx.Client() as client:
+            r = client.get(f"{API_URL}/admin/users", headers={"X-User-Id": str(current_user["id"])})
+            users = r.json() if r.status_code == 200 else []
+
+        body = render_template("admin_users.html", title="Admin Users", users=users)
+        start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
+        return [body]
+    if method == "POST" and path.startswith("/admin/users/") and path.endswith("/delete"):
+        if not current_user["id"] or not current_user.get("is_admin"):
+            start_response("302 Found", [("Location", "/auth/login")])
+            return [b""]
+
+        user_id = int(path.split("/")[3])
+        with httpx.Client() as client:
+            client.delete(f"{API_URL}/admin/users/{user_id}", headers={"X-User-Id": str(current_user["id"])})
+
+        start_response("302 Found", [("Location", "/admin/users")])
+        return [b""]
+    if method == "GET" and path == "/admin/notes":
+        if not current_user["id"] or not current_user.get("is_admin"):
+            start_response("302 Found", [("Location", "/auth/login")])
+            return [b""]
+
+        with httpx.Client() as client:
+            r = client.get(f"{API_URL}/admin/notes", headers={"X-User-Id": str(current_user["id"])})
+            notes = r.json() if r.status_code == 200 else []
+
+        body = render_template("admin_notes.html", title="Admin Notes", notes=notes)
+        start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
+        return [body]
+
+    if method == "POST" and path.startswith("/admin/notes/") and path.endswith("/delete"):
+        if not current_user["id"] or not current_user.get("is_admin"):
+            start_response("302 Found", [("Location", "/auth/login")])
+            return [b""]
+
+        note_id = int(path.split("/")[3])
+        with httpx.Client() as client:
+            client.delete(f"{API_URL}/admin/notes/{note_id}", headers={"X-User-Id": str(current_user["id"])})
+
+        start_response("302 Found", [("Location", "/admin/notes")])
+        return [b""]
+    if method == "GET" and path.startswith("/admin/notes/") and path.endswith("/edit"):
+        if not current_user["id"] or not current_user.get("is_admin"):
+            return redirect(start_response, "/auth/login")
+
+        note_id = int(path.split("/")[3])
+
+        with httpx.Client() as client:
+            r = client.get(f"{API_URL}/get_note/{note_id}")
+            if r.status_code != 200:
+                return not_found(start_response)
+            note_data = r.json()
+
+        body = render_template(
+            "admin_note_form.html",
+            title="Admin Edit Note",
+            note={"id": note_data["id"], "title": note_data["title"], "content": note_data["content"],
+                  "tags": note_data["tags"]},
+            action=f"/admin/notes/{note_id}/edit"
+        )
+        start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
+        return [body]
+    if method == "POST" and path.startswith("/admin/notes/") and path.endswith("/edit"):
+        if not current_user["id"] or not current_user.get("is_admin"):
+            return redirect(start_response, "/auth/login")
+
+        note_id = int(path.split("/")[3])
+        data = get_post_data(environ)
+
+        with httpx.Client() as client:
+            client.put(
+                f"{API_URL}/admin/notes/{note_id}",
+                headers={"X-User-Id": str(current_user["id"])},
+                json={
+                    "title": data.get("title", [""])[0],
+                    "content": data.get("content", [""])[0],
+                    "tags": data.get("tags", [""])[0],
+                },
+            )
+
+        return redirect(start_response, "/admin/notes")
+    if method == "GET" and path.startswith("/admin/users/") and path.endswith("/notes"):
+        if not current_user.get("id") or not current_user.get("is_admin"):
+            return redirect(start_response, "/auth/login")
+
+        user_id = int(path.split("/")[3])
+
+        with httpx.Client() as client:
+            # заметки выбранного пользователя
+            r_notes = client.get(f"{API_URL}/get_all_notes/{user_id}")
+            notes = r_notes.json() if r_notes.status_code == 200 else []
+
+            # данные пользователя (берём из админ списка)
+            r_users = client.get(
+                f"{API_URL}/admin/users",
+                headers={"X-User-Id": str(current_user["id"])}
+            )
+            users = r_users.json() if r_users.status_code == 200 else []
+
+        selected = next((u for u in users if int(u.get("id", -1)) == user_id), None)
+        if not selected:
+            return not_found(start_response)
+
+        body = render_template(
+            "admin_user_notes.html",
+            title="Admin User Notes",
+            user=selected,
+            notes=notes,
+            user_nav=current_user
+        )
+        start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
+        return [body]
+    if method == "GET" and path.startswith("/admin/users/") and path.endswith("/edit"):
+        if not current_user.get("id") or not current_user.get("is_admin"):
+            return redirect(start_response, "/auth/login")
+
+        user_id = int(path.split("/")[3])
+
+        with httpx.Client() as client:
+            r = client.get(
+                f"{API_URL}/admin/users",
+                headers={"X-User-Id": str(current_user["id"])}
+            )
+            users = r.json() if r.status_code == 200 else []
+
+        u = next((x for x in users if int(x.get("id", -1)) == user_id), None)
+        if not u:
+            return not_found(start_response)
+
+        body = render_template(
+            "admin_user_form.html",
+            title="Admin Edit User",
+            u=u,
+            action=f"/admin/users/{user_id}/edit",
+            user=current_user
+        )
+        start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
+        return [body]
+    if method == "POST" and path.startswith("/admin/users/") and path.endswith("/edit"):
+        if not current_user.get("id") or not current_user.get("is_admin"):
+            return redirect(start_response, "/auth/login")
+
+        user_id = int(path.split("/")[3])
+        form = get_post_data(environ)
+
+        payload = {
+            "username": form.get("username", [""])[0],
+            "email": form.get("email", [""])[0],
+            "password": form.get("password", [""])[0],
+            "is_admin": int(form.get("is_admin", ["0"])[0]),
+        }
+
+        with httpx.Client() as client:
+            client.put(
+                f"{API_URL}/admin/users/{user_id}",
+                headers={"X-User-Id": str(current_user["id"])},
+                json=payload
+            )
+
+        return redirect(start_response, "/")
+    if method == "GET" and path == "/me/edit":
+        if not current_user.get("id"):
+            return redirect(start_response, "/auth/login")
+
+        # берём актуальные данные с API
+        with httpx.Client() as client:
+            r = client.get(f"{API_URL}/me", headers={"X-User-Id": str(current_user["id"])})
+            if r.status_code != 200:
+                return not_found(start_response)
+            me = r.json()
+
+        body = render_template("me_form.html", title="Профиль", me=me, user=current_user)
+        start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
+        return [body]
+    if method == "POST" and path == "/me/edit":
+        if not current_user.get("id"):
+            return redirect(start_response, "/auth/login")
+
+        form = get_post_data(environ)
+        payload = {
+            "username": form.get("username", [""])[0],
+            "email": form.get("email", [""])[0],
+            "password": form.get("password", [""])[0],
+        }
+
+        with httpx.Client() as client:
+            r = client.put(f"{API_URL}/me", headers={"X-User-Id": str(current_user["id"])}, json=payload)
+            if r.status_code == 200:
+                # обновим current_user
+                u = r.json()["user"]
+                current_user["username"] = u["username"]
+                current_user["email"] = u["email"]
+                current_user["is_admin"] = bool(u.get("is_admin", 0))
+
+        return redirect(start_response, "/")
+    if method == "POST" and path == "/me/delete":
+        if not current_user.get("id"):
+            return redirect(start_response, "/auth/login")
+
+        with httpx.Client() as client:
+            client.delete(f"{API_URL}/me", headers={"X-User-Id": str(current_user["id"])})
+
+        # logout локально
+        current_user["id"] = None
+        current_user["username"] = None
+        current_user["email"] = None
+        current_user["is_admin"] = False
+
+        return redirect(start_response, "/auth/login")
     return not_found(start_response)
+
+
+
 
 if __name__ == "__main__":
     port = 8000

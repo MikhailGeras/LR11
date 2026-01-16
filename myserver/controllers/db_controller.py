@@ -1,5 +1,4 @@
 import sqlite3
-from models.user import User
 
 class DatabaseController:
     def __init__(self, db_path="database.db"):
@@ -35,27 +34,6 @@ class DatabaseController:
                             tags TEXT                                
                         );
                         """)
-
-        cur.execute("""
-                    CREATE TABLE IF NOT EXISTS tags (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL UNIQUE
-                    );
-                    """)
-
-        cur.execute("""
-                    CREATE TABLE IF NOT EXISTS tag_for_note (
-                        tag_id INTEGER NOT NULL,
-                        user_id INTEGER NOT NULL,
-                        note_id INTEGER NOT NULL,
-                        PRIMARY KEY (tag_id, user_id, note_id),
-                        FOREIGN KEY (tag_id) REFERENCES tags(id),
-                        FOREIGN KEY (user_id) REFERENCES users(id),
-                        FOREIGN KEY (note_id) REFERENCES notes(id)
-                    );
-                    """)
-
-
         conn.commit()
         conn.close()
         print("✔ Таблицы созданы")
@@ -78,6 +56,23 @@ class DatabaseController:
         conn.commit()
         conn.close()
         print("✔ Пользователи добавлены")
+    def update_user_self(self, user_id: int, username: str, email: str, password: str):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET username=?, email=?, password=? WHERE id=?",
+            (username, email, password, user_id)
+        )
+        conn.commit()
+        conn.close()
+
+    def delete_user_cascade(self, user_id: int):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM notes WHERE id=?", (user_id,))
+        cur.execute("DELETE FROM users WHERE id=?", (user_id,))
+        conn.commit()
+        conn.close()
 
     def insert_note(self, note):
         """
@@ -89,62 +84,16 @@ class DatabaseController:
         conn = self.connect()
         cur = conn.cursor()
 
-        cur.execute("INSERT INTO notes (title, content, user_id, date_created, date_modified, tags)VALUES (?, ?, ?, ?, ?, ?)", (
+        cur.execute("INSERT INTO notes (title, content, user_id, tags)VALUES (?, ?, ?, ?)", (
             note.title,
             note.content,
             note.user_id,
-            note.date_created,
-            note.date_modified,
             note.tags
         ))
 
         conn.commit()
         conn.close()
         print("✔ Заметка добавлена")
-
-    def insert_tag(self, tag):
-        """
-        Добавляет тэги в базу данных
-        на вход:
-        [тип str]
-        """
-        conn = self.connect()
-        cur = conn.cursor()
-
-        cur.execute(
-            "INSERT INTO tags (name) VALUES (?)",
-            (tag,)
-        )
-
-        conn.commit()
-        conn.close()
-        print("✔ Тэг добавлен")
-
-    def insert_tags_id_for_note_by_user(self, tags_id, user_id, note_id):
-        conn = self.connect()
-        cur = conn.cursor()
-
-        for tag in tags_id:
-            cur.execute(
-                "INSERT INTO tag_for_note (tag_id, user_id, note_id) VALUES (?, ?, ?)",
-                (tag, user_id, note_id)
-            )
-
-        conn.commit()
-        conn.close()
-        print("Свясь тега, пользователя и подписки создана")
-
-    def read_all_users(self):
-        """Возвращает список всех пользователей в базе в виде словаря."""
-        conn = self.connect()
-        cur = conn.cursor()
-
-        cur.execute("SELECT id, username, email, password, is_admin FROM users")
-        rows = cur.fetchall()
-        conn.close()
-
-        return rows
-
 
     def read_notes_by_user(self, user_id):
         """
@@ -173,19 +122,6 @@ class DatabaseController:
         return row
 
 
-    def read_all_tags_user(self, user_id):
-        """Возвращает список всех тегов пользователя в базе в виде словаря."""
-        conn = self.connect()
-        cur = conn.cursor()
-
-        cur.execute("SELECT tag_id FROM tag_for_note WHERE user_id=?",
-                    (user_id,))
-        rows = cur.fetchall()
-        conn.close()
-
-        return rows
-
-
     def login_user(self, email, password):
         """ Возвращает 0 если пользователя нет / если есть - row """
         conn = self.connect()
@@ -204,7 +140,7 @@ class DatabaseController:
         conn = self.connect()
         cur = conn.cursor()
 
-        cur.execute("UPDATE notes SET title=?, content=?, tags=? WHERE id=?",
+        cur.execute("UPDATE notes SET title=?, content=?, tags=?, date_modified=CURRENT_TIMESTAMP WHERE id=?",
                     (title, new_content, tags, id))
 
         conn.commit()
@@ -256,8 +192,10 @@ class DatabaseController:
         cur = conn.cursor()
         cur.execute("""
             SELECT
+                u.id,
                 u.username,
                 u.email,
+                u.is_admin,
                 COUNT(n.id) AS notes_count
             FROM users u
             LEFT JOIN notes n ON n.user_id = u.id
@@ -268,6 +206,103 @@ class DatabaseController:
         conn.close()
 
         return [
-            {"name": r[0], "email": r[1], "notes_count": r[2]}
+            {"id": r[0], "name": r[1], "email": r[2], "is_admin": r[3], "notes_count": r[4]}
             for r in rows
         ]
+    def get_user_by_id(self, user_id: int):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, email, password, is_admin FROM users WHERE id=?", (user_id,))
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return None
+        return {"id": row[0], "username": row[1], "email": row[2], "password": row[3], "is_admin": row[4]}
+    def admin_list_users(self):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, email, password, is_admin FROM users ORDER BY id")
+        rows = cur.fetchall()
+        conn.close()
+        return [{"id": r[0], "username": r[1], "email": r[2], "is_admin": r[4]} for r in rows]
+
+    def admin_create_user(self, username: str, email: str, password: str, is_admin: int=0):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, ?)",
+            (username, email, password, is_admin),
+        )
+        conn.commit()
+        new_id = cur.lastrowid
+        conn.close()
+        return new_id
+    def admin_exists(self)->bool:
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM users WHERE is_admin=1 LIMIT 1")
+        row = cur.fetchone()
+        conn.close()
+        return row is not None
+
+    def admin_update_user(self, user_id: int, username: str, email: str, password: str, is_admin: int):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET username=?, email=?, password=?, is_admin=? WHERE id=?",
+            (username, email, password, is_admin, user_id),
+        )
+        conn.commit()
+        conn.close()
+
+    def admin_delete_user(self, user_id: int):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM notes WHERE user_id = ?", (user_id,))
+        cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+
+    def admin_list_notes(self):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT n.id, n.title, n.content, n.tags, n.date_created, n.date_modified, n.user_id, u.username
+            FROM notes n
+            JOIN users u ON u.id = n.user_id
+            ORDER BY n.date_modified DESC
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        return [
+            {
+                "id":r[0], "title": r[1], "content": r[2], "tags": r[3],
+                "date_created": r[4], "date_modified": r[5],
+                "user_id": r[6], "username": r[7]
+            }
+            for r in rows
+        ]
+    def admin_update_note(self, note_id: int, title: str, content: str, tags:str):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE notes
+            SET title=?, content=?, tags=?, date_modified=CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (title, content, tags, note_id))
+        conn.commit()
+        conn.close()
+
+    def admin_delete_note(self, note_id: int):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+        conn.commit()
+        conn.close()
+    def user_exists_by_email(self, email: str) -> bool:
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM users WHERE email=? LIMIT 1", (email,))
+        row = cur.fetchone()
+        conn.close()
+        return row is not None
