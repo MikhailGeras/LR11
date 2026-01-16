@@ -251,3 +251,23 @@ class DatabaseController:
         conn.close()
         return rows
 
+    def get_users_summary(self):
+        conn = self.connect()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                u.username,
+                u.email,
+                COUNT(n.id) AS notes_count
+            FROM users u
+            LEFT JOIN notes n ON n.user_id = u.id
+            GROUP BY u.id, u.username, u.email
+            ORDER BY u.username
+             """)
+        rows = cur.fetchall()
+        conn.close()
+
+        return [
+            {"name": r[0], "email": r[1], "notes_count": r[2]}
+            for r in rows
+        ]

@@ -43,6 +43,10 @@ def add_note_handler(note_data: Note):
     res = db_controller.insert_note(note_data)
     return {"status": "Заметка успешно добавлена!"}
 
+@app.get("/users/summary")
+def get_users_summary_handler():
+    return db_controller.get_users_summary()
+
 @app.get("/get_all_notes/{user_id}")
 def get_notes_handler(user_id: int):
     notes = db_controller.read_notes_by_user(user_id)

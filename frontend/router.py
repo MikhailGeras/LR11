@@ -49,23 +49,15 @@ def application(environ, start_response):
 
     # === Главная страница ===
     if method == "GET" and path in ("/", "/index"):
-        if current_user["id"]:
-            # Получаем заметки пользователя через httpx
-            try:
-                with httpx.Client() as client:
-                    response = client.get(f"{API_URL}/get_all_notes/{current_user['id']}")
-                    notes = response.json() if response.status_code == 200 else []
-                    
-                body = render_template("index.html", title="Главная", users=[{
-                    "name": current_user["username"],
-                    "email": current_user["email"],
-                    "notes_count": len(notes)
-                }])
-            except Exception as e:
-                body = render_template("index.html", title="Главная", users=[])
-        else:
-            body = render_template("index.html", title="Главная", users=[])
-        
+        # Получаем заметки пользователей через httpx
+        try:
+            with httpx.Client() as client:
+                response = client.get(f"{API_URL}/users/summary")
+                users = response.json() if response.status_code == 200 else []
+        except Exception:
+            users = []
+
+        body = render_template("index.html", title="Главная", users=users)
         start_response("200 OK", [("Content-Type", "text/html; charset=utf-8")])
         return [body]
 
